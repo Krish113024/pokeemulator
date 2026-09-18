@@ -1,0 +1,16 @@
+# Cloudflare Pages headers.
+# The mGBA WebAssembly core uses threads (SharedArrayBuffer), which the browser
+# only enables when the document is "cross-origin isolated". These two headers
+# turn that on. All assets are same-origin (fonts, core, and wasm are vendored),
+# so require-corp works without any cross-origin exceptions.
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Resource-Policy: same-origin
+
+# Long-cache the immutable WebAssembly core and fonts.
+/js/vendor/mgba/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/fonts/*
+  Cache-Control: public, max-age=31536000, immutable

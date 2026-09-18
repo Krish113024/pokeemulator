@@ -47,6 +47,34 @@ python3 serve.py           # defaults to port 8000
 picking required. Want to play something else? Click **Load ROM** in the toolbar to
 drag-and-drop or choose any other `.gba` file.
 
+## Deploying to Cloudflare Pages
+
+Cloudflare Pages can send the required COOP/COEP headers via the included `_headers`
+file, so the hosted site is cross-origin isolated and the core runs. Everything is
+self-hosted (fonts, core, wasm) — no third-party CDN.
+
+**Option A — Git integration (auto-deploys on push):**
+1. Push this repo to GitHub (already done for this branch).
+2. In the Cloudflare dashboard: **Workers & Pages → Create → Pages → Connect to Git**,
+   pick this repo/branch.
+3. Build settings: **Framework preset = None**, **Build command = _(leave empty)_**,
+   **Build output directory = `/`** (the repo root). `wrangler.toml` already declares this.
+4. Deploy. Your site will be at `https://<project>.pages.dev`.
+
+**Option B — Wrangler CLI (direct upload):**
+```bash
+npx wrangler pages deploy .
+```
+
+Verify isolation after deploy: open the site, open DevTools console, and run
+`crossOriginIsolated` — it should print `true`. If it's `false`, the `_headers` file
+isn't being applied and the core won't start.
+
+> **Heads-up on the bundled ROM:** a public Pages site makes `roms/…​.gba` publicly
+> downloadable. If you don't want to distribute the ROM, delete the `roms/` game before
+> deploying (or point Pages at a branch without it) — the app still works via the
+> **Load ROM** file-picker.
+
 ## Controls (defaults)
 
 | GBA button | Key          |
@@ -75,8 +103,12 @@ css/style.css          Theme + layout
 js/controls.js         Physical-key bindings, defaults, remap persistence
 js/app.js              ROM loading, mGBA core boot, input driver, toolbar + modal
 js/vendor/mgba/        Vendored mGBA WebAssembly core (mgba.js + mgba.wasm)
-serve.py               Static server with the required COOP/COEP headers
+assets/fonts.css       Self-hosted web fonts (no Google Fonts CDN)
+assets/fonts/          Vendored .woff2 font files
 assets/favicon.svg     Pokéball favicon
+serve.py               Local static server with the required COOP/COEP headers
+_headers               COOP/COEP headers for Cloudflare Pages
+wrangler.toml          Cloudflare Pages project config (static, no build)
 roms/                  The bundled game (other ROMs git-ignored)
 ```
 
