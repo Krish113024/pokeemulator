@@ -10,9 +10,11 @@ and a custom GBA/FireRed-themed UI.
 
 Pokémon FireRed is a **Game Boy Advance** title (ARM7TDMI CPU) — a far more complex
 machine than the original Game Boy. Rather than ship a fragile hand-rolled emulator,
-EmberBoy wraps the battle-tested **mGBA** core (via [EmulatorJS](https://emulatorjs.org))
-in a completely custom, hand-designed frontend. You get reliable, accurate emulation
-plus a UI and control system built from scratch.
+EmberBoy runs the battle-tested **mGBA** core compiled to WebAssembly
+([`@thenick775/mgba-wasm`](https://www.npmjs.com/package/@thenick775/mgba-wasm)),
+**vendored locally** so the emulator runs fully offline with no CDN. Around it is a
+completely custom, hand-designed frontend: the UI, the input driver, and the
+control-remapping system are all built from scratch.
 
 ## Features
 
@@ -27,21 +29,23 @@ plus a UI and control system built from scratch.
 
 ## Running it
 
-Because the app fetches a ROM file, serve it over HTTP (opening `index.html` directly
-via `file://` blocks `fetch`). Any static server works:
+The mGBA WebAssembly core uses threads, so the page **must be served with
+cross-origin isolation** (`COOP: same-origin` + `COEP: require-corp`). A ready-made
+server is included:
 
 ```bash
 cd pokeemulator
-python3 -m http.server 8000
+python3 serve.py           # defaults to port 8000
 # then open http://localhost:8000
 ```
+
+> A plain `python3 -m http.server` will **not** work — it doesn't send the COOP/COEP
+> headers, and the core won't start. Use `serve.py` (or any server configured with
+> those headers). No internet connection is required — the core is bundled.
 
 **Pokémon FireRed is preloaded** — the site launches straight into the game, no file
 picking required. Want to play something else? Click **Load ROM** in the toolbar to
 drag-and-drop or choose any other `.gba` file.
-
-> On first launch the mGBA core (~a few MB) is downloaded from the EmulatorJS CDN and
-> cached by your browser. An internet connection is needed the first time.
 
 ## Controls (defaults)
 
@@ -66,15 +70,19 @@ git-ignored. Only use ROMs you legally own.
 ## Project structure
 
 ```
-index.html         Custom UI shell
-css/style.css       Theme + layout
-js/controls.js      Key-label mapping, defaults, remap persistence
-js/app.js           ROM loading, EmulatorJS boot, toolbar + modal wiring
-assets/favicon.svg  Pokéball favicon
-roms/               Drop your ROM here (git-ignored)
+index.html            Custom UI shell
+css/style.css          Theme + layout
+js/controls.js         Physical-key bindings, defaults, remap persistence
+js/app.js              ROM loading, mGBA core boot, input driver, toolbar + modal
+js/vendor/mgba/        Vendored mGBA WebAssembly core (mgba.js + mgba.wasm)
+serve.py               Static server with the required COOP/COEP headers
+assets/favicon.svg     Pokéball favicon
+roms/                  The bundled game (other ROMs git-ignored)
 ```
 
 ## Credits
 
-- Emulation: [EmulatorJS](https://emulatorjs.org) / [mGBA](https://mgba.io)
-- Frontend UI & control system: this project.
+- Emulation core: [mGBA](https://mgba.io) via
+  [`@thenick775/mgba-wasm`](https://www.npmjs.com/package/@thenick775/mgba-wasm)
+  (part of the [gbajs2](https://github.com/thenick775/gbajs2) project), MPL-2.0.
+- Frontend UI, input driver & control system: this project.

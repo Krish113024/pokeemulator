@@ -1,146 +1,100 @@
 /* ==========================================================================
    controls.js — customizable control bindings for EmberBoy.
 
-   EmulatorJS reads its bindings from the global `EJS_defaultControls` object.
-   Each player (0..3) maps a RetroPad button index -> { value, value2 } where
-   `value` is a keyboard label string (EmulatorJS's own label format, e.g.
-   "x", "enter", "up arrow") and `value2` is a gamepad binding.
+   The emulator input is driven directly by app.js: each GBA button is bound to
+   a physical keyboard code (KeyboardEvent.code, e.g. "KeyX", "ArrowUp",
+   "Enter", "ShiftRight"). Bindings persist in localStorage and can be remapped
+   live from the Controls panel.
 
-   This module:
-     • defines sensible GBA defaults,
-     • persists user remaps in localStorage,
-     • converts a real KeyboardEvent into EmulatorJS's label string,
-     • exposes helpers used by app.js and the controls modal.
+   Button ids match the modal's data-btn attributes and the mGBA button names:
+     0:B  2:SELECT  3:START  4:UP  5:DOWN  6:LEFT  7:RIGHT  8:A  10:L  11:R
    ========================================================================== */
 
 (function () {
   'use strict';
 
-  var STORAGE_KEY = 'emberboy.controls.v1';
+  var STORAGE_KEY = 'emberboy.controls.v2';
 
-  // RetroPad button index -> friendly name (GBA-relevant subset)
-  var BUTTONS = {
-    0:  'B',
-    2:  'SELECT',
-    3:  'START',
-    4:  'UP',
-    5:  'DOWN',
-    6:  'LEFT',
-    7:  'RIGHT',
-    8:  'A',
-    10: 'L',
-    11: 'R'
+  // Button id -> mGBA button name (passed to buttonPress/buttonUnpress).
+  var GBA_NAME = {
+    0: 'B', 2: 'Select', 3: 'Start', 4: 'Up', 5: 'Down',
+    6: 'Left', 7: 'Right', 8: 'A', 10: 'L', 11: 'R'
   };
 
-  // Gamepad defaults (value2) so a plugged-in controller works out of the box.
-  var GAMEPAD_DEFAULTS = {
-    0:  'BUTTON_1',              // B  -> physical bottom-right cluster
-    2:  'SELECT',
-    3:  'START',
-    4:  'DPAD_UP',
-    5:  'DPAD_DOWN',
-    6:  'DPAD_LEFT',
-    7:  'DPAD_RIGHT',
-    8:  'BUTTON_2',              // A
-    10: 'LEFT_TOP_SHOULDER',
-    11: 'RIGHT_TOP_SHOULDER'
-  };
-
-  // Default keyboard bindings (EmulatorJS label strings).
+  // Default physical-key bindings (KeyboardEvent.code).
   var KEY_DEFAULTS = {
-    0:  'z',            // B
-    8:  'x',            // A
-    2:  'shift',        // SELECT
-    3:  'enter',        // START
-    4:  'up arrow',
-    5:  'down arrow',
-    6:  'left arrow',
-    7:  'right arrow',
-    10: 'a',            // L
-    11: 's'             // R
+    8:  'KeyX',        // A
+    0:  'KeyZ',        // B
+    10: 'KeyA',        // L
+    11: 'KeyS',        // R
+    3:  'Enter',       // START
+    2:  'ShiftRight',  // SELECT
+    4:  'ArrowUp',
+    5:  'ArrowDown',
+    6:  'ArrowLeft',
+    7:  'ArrowRight'
   };
 
-  /* --------------- KeyboardEvent -> EmulatorJS label --------------- */
-  // Mirrors EmulatorJS's internal keyboard label table.
-  var KEYCODE_LABELS = {
-    8: 'backspace', 9: 'tab', 13: 'enter', 16: 'shift', 17: 'ctrl', 18: 'alt',
-    19: 'pause/break', 20: 'caps lock', 27: 'esc', 32: 'space',
-    33: 'page up', 34: 'page down', 35: 'end', 36: 'home',
-    37: 'left arrow', 38: 'up arrow', 39: 'right arrow', 40: 'down arrow',
-    45: 'insert', 46: 'delete',
-    48: '0', 49: '1', 50: '2', 51: '3', 52: '4', 53: '5', 54: '6', 55: '7', 56: '8', 57: '9',
-    59: ';', 61: '=',
-    96: 'numpad 0', 97: 'numpad 1', 98: 'numpad 2', 99: 'numpad 3', 100: 'numpad 4',
-    101: 'numpad 5', 102: 'numpad 6', 103: 'numpad 7', 104: 'numpad 8', 105: 'numpad 9',
-    106: 'multiply', 107: 'add', 109: 'subtract', 110: 'decimal point', 111: 'divide',
-    112: 'f1', 113: 'f2', 114: 'f3', 115: 'f4', 116: 'f5', 117: 'f6',
-    118: 'f7', 119: 'f8', 120: 'f9', 121: 'f10', 122: 'f11', 123: 'f12',
-    186: ';', 187: '=', 188: ',', 189: '-', 190: '.', 191: '/', 192: '`',
-    219: '[', 220: '\\', 221: ']', 222: "'"
-  };
-
-  function eventToLabel(e) {
-    var code = e.keyCode || e.which;
-    if (code >= 65 && code <= 90) return String.fromCharCode(code).toLowerCase(); // a-z
-    if (KEYCODE_LABELS[code]) return KEYCODE_LABELS[code];
-    if (e.key && e.key.length === 1) return e.key.toLowerCase();
-    return (e.key || '').toLowerCase();
+  // Pretty labels for KeyboardEvent.code values shown on the keycaps.
+  function prettyCode(code) {
+    if (!code) return '—';
+    if (/^Key[A-Z]$/.test(code))   return code.slice(3);          // KeyX -> X
+    if (/^Digit[0-9]$/.test(code)) return code.slice(5);          // Digit1 -> 1
+    if (/^Numpad/.test(code))      return 'Num ' + code.slice(6);
+    if (/^Arrow/.test(code))       return code.slice(5) + ' Arr'; // ArrowUp -> Up Arr
+    var map = {
+      Enter: 'Enter', Space: 'Space', Tab: 'Tab', Escape: 'Esc',
+      Backspace: 'Bksp', ShiftLeft: 'L-Shift', ShiftRight: 'R-Shift',
+      ControlLeft: 'L-Ctrl', ControlRight: 'R-Ctrl', AltLeft: 'L-Alt',
+      AltRight: 'R-Alt', Backquote: '`', Minus: '-', Equal: '=',
+      BracketLeft: '[', BracketRight: ']', Semicolon: ';', Quote: "'",
+      Comma: ',', Period: '.', Slash: '/', Backslash: '\\', CapsLock: 'Caps'
+    };
+    return map[code] || code;
   }
 
-  /* --------------- persistence --------------- */
   function loadOverrides() {
-    try {
-      var raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : {};
-    } catch (_) { return {}; }
+    try { var r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : {}; }
+    catch (_) { return {}; }
   }
-  function saveOverrides(map) {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(map)); } catch (_) {}
+  function saveOverrides(m) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(m)); } catch (_) {}
   }
 
-  /* --------------- build EmulatorJS control object --------------- */
-  function buildControls() {
+  // Build a { KeyboardEvent.code : mGBA button name } lookup for the input loop.
+  function codeToButton() {
     var overrides = loadOverrides();
-    var player0 = {};
-    Object.keys(KEY_DEFAULTS).forEach(function (idx) {
-      var keyVal = (idx in overrides) ? overrides[idx] : KEY_DEFAULTS[idx];
-      player0[idx] = { value: keyVal, value2: GAMEPAD_DEFAULTS[idx] || '' };
+    var out = {};
+    Object.keys(GBA_NAME).forEach(function (idx) {
+      var code = (idx in overrides) ? overrides[idx] : KEY_DEFAULTS[idx];
+      if (code) out[code] = GBA_NAME[idx];
     });
-    return { 0: player0, 1: {}, 2: {}, 3: {} };
+    return out;
   }
 
-  /* --------------- public API --------------- */
   window.EmberControls = {
     STORAGE_KEY: STORAGE_KEY,
-    BUTTONS: BUTTONS,
+    GBA_NAME: GBA_NAME,
     KEY_DEFAULTS: KEY_DEFAULTS,
-    eventToLabel: eventToLabel,
+    prettyCode: prettyCode,
     loadOverrides: loadOverrides,
     saveOverrides: saveOverrides,
-    buildControls: buildControls,
+    codeToButton: codeToButton,
 
-    // current label shown on a keycap for a given button index
+    // current code bound to a button id
+    currentCode: function (idx) {
+      var o = loadOverrides();
+      return (idx in o) ? o[idx] : KEY_DEFAULTS[idx];
+    },
     currentLabel: function (idx) {
-      var overrides = loadOverrides();
-      var v = (idx in overrides) ? overrides[idx] : KEY_DEFAULTS[idx];
-      return v || '—';
+      return prettyCode(this.currentCode(idx));
     },
-
-    // set one binding; returns updated label
-    setBinding: function (idx, label) {
-      var overrides = loadOverrides();
-      overrides[idx] = label;
-      saveOverrides(overrides);
-      window.EJS_defaultControls = buildControls();
-      return label;
+    setBinding: function (idx, code) {
+      var o = loadOverrides();
+      o[idx] = code;
+      saveOverrides(o);
+      return prettyCode(code);
     },
-
-    resetAll: function () {
-      saveOverrides({});
-      window.EJS_defaultControls = buildControls();
-    }
+    resetAll: function () { saveOverrides({}); }
   };
-
-  // Make the initial control set available before EmulatorJS boots.
-  window.EJS_defaultControls = buildControls();
 })();

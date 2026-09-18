@@ -29,6 +29,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { height: 100%; }
 body {
   margin: 0;
@@ -193,7 +194,11 @@ body {
   width: 100%; aspect-ratio: 3 / 2; background: #000;
   border-radius: 6px; overflow: hidden; position: relative;
 }
-.game-mount canvas, .game-mount video { image-rendering: pixelated; }
+.game-mount canvas, .game-mount video {
+  image-rendering: pixelated;
+  width: 100% !important; height: 100% !important;
+  display: block; background: #000;
+}
 
 .boot-overlay {
   position: absolute; inset: 0; display: grid; place-items: center;
