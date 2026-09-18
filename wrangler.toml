@@ -1,6 +1,0 @@
-# Cloudflare Pages project config.
-# EmberBoy is a fully static site (no build step) — the deployable assets are the
-# repository root, so the "build output directory" is ".".
-name = "emberboy"
-compatibility_date = "2024-11-01"
-pages_build_output_dir = "."
