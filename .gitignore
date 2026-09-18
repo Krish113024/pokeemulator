@@ -1,0 +1,19 @@
+# ROM & save files are ignored by default so random game files never get
+# committed. The one exception is the bundled game this site ships with,
+# re-included at the bottom of this file.
+roms/*
+*.gba
+*.gbc
+*.gb
+*.sav
+*.srm
+*.state
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+node_modules/
+
+# --- Bundled game (preloaded so the site launches straight into it) ---
+!roms/.gitkeep
+!roms/Pokemon - FireRed Version (USA).gba

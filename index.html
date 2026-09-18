@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0d0f16" />
+<title>EmberBoy · Pokémon FireRed Web Emulator</title>
+<meta name="description" content="A polished web-based Game Boy Advance emulator for playing Pokémon FireRed, with fully customizable controls." />
+<link rel="preconnect" href="https://cdn.emulatorjs.org" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/style.css" />
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- ===================== HEADER ===================== -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <span class="pokeball"></span>
+      </div>
+      <div class="brand-text">
+        <h1>Ember<span>Boy</span></h1>
+        <p>Game Boy Advance · Web Emulator</p>
+      </div>
+    </div>
+
+    <nav class="toolbar" aria-label="Emulator controls">
+      <button id="btn-load"    class="tool" title="Load a ROM file">
+        <svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+        <span>Load ROM</span>
+      </button>
+      <button id="btn-controls" class="tool" title="Customize controls">
+        <svg viewBox="0 0 24 24"><path d="M4 8h10M18 8h2M4 16h2M10 16h10M14 6v4M8 14v4"/></svg>
+        <span>Controls</span>
+      </button>
+      <button id="btn-save"  class="tool" disabled title="Save state">
+        <svg viewBox="0 0 24 24"><path d="M5 3h11l3 3v15H5zM8 3v5h7V3M8 21v-6h8v6"/></svg>
+        <span>Save</span>
+      </button>
+      <button id="btn-loadstate" class="tool" disabled title="Load state">
+        <svg viewBox="0 0 24 24"><path d="M4 4v6h6M4 10a8 8 0 1 1 1.5 7"/></svg>
+        <span>Load</span>
+      </button>
+      <button id="btn-reset" class="tool" disabled title="Reset game">
+        <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4h-4"/></svg>
+        <span>Reset</span>
+      </button>
+      <button id="btn-fs" class="tool" disabled title="Fullscreen">
+        <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+        <span>Fullscreen</span>
+      </button>
+    </nav>
+  </header>
+
+  <!-- ===================== MAIN ===================== -->
+  <main class="stage">
+
+    <!-- Landing / drop zone (shown before a ROM is loaded) -->
+    <section id="landing" class="landing" aria-label="Load a game">
+      <div id="dropzone" class="dropzone">
+        <div class="dz-glow"></div>
+        <div class="dz-inner">
+          <div class="dz-icon">
+            <span class="pokeball big"></span>
+          </div>
+          <h2>Drop your Pokémon FireRed ROM here</h2>
+          <p>or click to choose a <code>.gba</code> file from your device</p>
+          <button id="btn-pick" class="cta">Choose ROM file</button>
+          <p class="hint" id="autoload-hint">Looking for a bundled ROM…</p>
+        </div>
+      </div>
+      <ul class="feature-row">
+        <li><strong>Remappable</strong><span>keyboard + gamepad</span></li>
+        <li><strong>Save states</strong><span>anywhere, anytime</span></li>
+        <li><strong>Touch pad</strong><span>on phones &amp; tablets</span></li>
+        <li><strong>Battery saves</strong><span>your progress persists</span></li>
+      </ul>
+    </section>
+
+    <!-- Device / emulator frame (shown once a ROM is loaded) -->
+    <section id="device" class="device" hidden aria-label="Game screen">
+      <div class="device-body">
+        <div class="device-shoulders">
+          <span class="shoulder l">L</span>
+          <span class="shoulder r">R</span>
+        </div>
+        <div class="screen-bezel">
+          <div class="screen-brand">EMBERBOY <em>ADVANCE</em></div>
+          <div id="game" class="game-mount"></div>
+          <div id="boot-overlay" class="boot-overlay">
+            <div class="spinner"></div>
+            <p id="boot-text">Loading core…</p>
+          </div>
+        </div>
+        <div class="device-controls-hint">
+          <span class="dpad-hint" aria-hidden="true"></span>
+          <span class="ab-hint" aria-hidden="true"></span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="statusbar">
+    <span id="status-rom">No ROM loaded</span>
+    <span class="dot">•</span>
+    <span id="status-core">Core: mGBA (EmulatorJS)</span>
+    <span class="spacer"></span>
+    <span class="tips">Tip: press <kbd>?</kbd> for the control map</span>
+  </footer>
+</div>
+
+<!-- ===================== CONTROLS MODAL ===================== -->
+<div id="controls-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="cm-title">
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-card">
+    <header class="modal-head">
+      <h2 id="cm-title">Customize Controls</h2>
+      <button class="modal-x" data-close aria-label="Close">&times;</button>
+    </header>
+    <p class="modal-sub">Click a button below, then press the key you want to bind to it. Changes apply instantly.</p>
+
+    <div class="pad-layout">
+      <div class="pad-col left">
+        <div class="binding" data-btn="4"><label>D-Pad Up</label><button class="keycap" data-cap="4">—</button></div>
+        <div class="binding" data-btn="6"><label>D-Pad Left</label><button class="keycap" data-cap="6">—</button></div>
+        <div class="binding" data-btn="7"><label>D-Pad Right</label><button class="keycap" data-cap="7">—</button></div>
+        <div class="binding" data-btn="5"><label>D-Pad Down</label><button class="keycap" data-cap="5">—</button></div>
+      </div>
+      <div class="pad-col mid">
+        <div class="binding" data-btn="2"><label>Select</label><button class="keycap" data-cap="2">—</button></div>
+        <div class="binding" data-btn="3"><label>Start</label><button class="keycap" data-cap="3">—</button></div>
+        <div class="binding" data-btn="10"><label>L Shoulder</label><button class="keycap" data-cap="10">—</button></div>
+        <div class="binding" data-btn="11"><label>R Shoulder</label><button class="keycap" data-cap="11">—</button></div>
+      </div>
+      <div class="pad-col right">
+        <div class="binding accent-a" data-btn="8"><label>A Button</label><button class="keycap" data-cap="8">—</button></div>
+        <div class="binding accent-b" data-btn="0"><label>B Button</label><button class="keycap" data-cap="0">—</button></div>
+      </div>
+    </div>
+
+    <div class="modal-foot">
+      <button id="btn-reset-controls" class="ghost">Restore defaults</button>
+      <div class="foot-note">Prefer a gamepad? Plug it in — hold a button in the in-game menu to map it, or use the wrench menu on the screen.</div>
+      <button class="solid" data-close>Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden file input -->
+<input id="file-input" type="file" accept=".gba,.gbc,.gb,.zip" hidden />
+
+<!-- key-capture toast -->
+<div id="capture-toast" class="capture-toast" hidden>Press any key to bind…<br><small>Esc to cancel</small></div>
+
+<script src="js/controls.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
